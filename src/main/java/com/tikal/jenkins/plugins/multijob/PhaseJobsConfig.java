@@ -12,6 +12,7 @@ import hudson.model.Result;
 import hudson.model.TaskListener;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
+import hudson.model.Job;
 import hudson.model.BooleanParameterDefinition;
 import hudson.model.ChoiceParameterDefinition;
 import hudson.model.Descriptor;
@@ -44,10 +45,11 @@ import org.kohsuke.stapler.StaplerRequest;
 
 //import com.tikal.jenkins.plugins.multijob.scm.MultiJobScm;
 public class PhaseJobsConfig implements Describable<PhaseJobsConfig> {
-
 	private String jobName;
+	private String jobAlias;
 	private String jobProperties;
 	private boolean currParams;
+	private boolean aggregatedTestResults;
 	private boolean exposedSCM;
 	private boolean disableJob;
 	private String parsingRulesPath;
@@ -158,6 +160,14 @@ public class PhaseJobsConfig implements Describable<PhaseJobsConfig> {
 		this.currParams = currParams;
 	}
 
+	public boolean isAggregatedTestResults() {
+		return aggregatedTestResults;
+	}
+
+	public void setAggregatedTestResults(boolean aggregatedTestResults) {
+		this.aggregatedTestResults = aggregatedTestResults;
+	}
+
 	public String getJobProperties() {
 		return jobProperties;
 	}
@@ -166,13 +176,20 @@ public class PhaseJobsConfig implements Describable<PhaseJobsConfig> {
 		this.jobProperties = jobProperties;
 	}
 
-	public String getJobName() {
-		return jobName;
-	}
+	public String getJobName() { return jobName; }
 
 	public void setJobName(String jobName) {
 		this.jobName = jobName;
 	}
+
+	public String getJobAlias() {
+		if (jobAlias == null) {
+			return "";
+		}
+		return jobAlias;
+	}
+
+	public void setJobAlias(String jobAlias) { this.jobAlias = jobAlias; }
 
 	public Descriptor<PhaseJobsConfig> getDescriptor() {
 		return Hudson.getInstance().getDescriptorOrDie(getClass());
@@ -182,14 +199,28 @@ public class PhaseJobsConfig implements Describable<PhaseJobsConfig> {
 		return getClass().getSimpleName();
 	}
 
-	@DataBoundConstructor
-	public PhaseJobsConfig(String jobName, String jobProperties,
+	public PhaseJobsConfig(String jobName, String jobAlias,String jobProperties,
 			boolean currParams, List<AbstractBuildParameters> configs,
 			KillPhaseOnJobResultCondition killPhaseOnJobResultCondition,
 			boolean disableJob, boolean enableRetryStrategy,
 			String parsingRulesPath, int maxRetries, boolean enableCondition,
-			boolean abortAllJob, String condition, boolean buildOnlyIfSCMChanges, boolean applyConditionOnlyIfNoSCMChanges) {
+			boolean abortAllJob, String condition, boolean buildOnlyIfSCMChanges,
+                        boolean applyConditionOnlyIfNoSCMChanges) {
+            this(jobName, jobAlias, jobProperties, currParams, configs, killPhaseOnJobResultCondition,
+				disableJob, enableRetryStrategy, parsingRulesPath, maxRetries, enableCondition,
+				abortAllJob, condition, buildOnlyIfSCMChanges, applyConditionOnlyIfNoSCMChanges, false);
+        }
+        
+	@DataBoundConstructor
+	public PhaseJobsConfig(String jobName, String jobAlias, String jobProperties,
+			boolean currParams, List<AbstractBuildParameters> configs,
+			KillPhaseOnJobResultCondition killPhaseOnJobResultCondition,
+			boolean disableJob, boolean enableRetryStrategy,
+			String parsingRulesPath, int maxRetries, boolean enableCondition,
+			boolean abortAllJob, String condition, boolean buildOnlyIfSCMChanges,
+			boolean applyConditionOnlyIfNoSCMChanges, boolean aggregatedTestResults) {
 		this.jobName = jobName;
+		this.jobAlias = jobAlias;
 		this.jobProperties = jobProperties;
 		this.currParams = currParams;
 		this.killPhaseOnJobResultCondition = killPhaseOnJobResultCondition;
@@ -206,6 +237,7 @@ public class PhaseJobsConfig implements Describable<PhaseJobsConfig> {
 		this.condition = Util.fixNull(condition);
 		this.buildOnlyIfSCMChanges = buildOnlyIfSCMChanges;
 		this.applyConditionOnlyIfNoSCMChanges = applyConditionOnlyIfNoSCMChanges;
+                this.aggregatedTestResults = aggregatedTestResults;
 	}
 
 	public List<AbstractBuildParameters> getConfigs() {
@@ -252,12 +284,12 @@ public class PhaseJobsConfig implements Describable<PhaseJobsConfig> {
 				String paramValue = null;
 				if (pdef instanceof StringParameterDefinition) {
 					StringParameterDefinition stringParameterDefinition = (StringParameterDefinition) pdef;
-					paramValue = stringParameterDefinition
-							.getDefaultParameterValue().value;
+					paramValue = (String) stringParameterDefinition
+							.getDefaultParameterValue().getValue();
 				} else if (pdef instanceof BooleanParameterDefinition) {
 					BooleanParameterDefinition booleanParameterDefinition = (BooleanParameterDefinition) pdef;
 					paramValue = String.valueOf(booleanParameterDefinition
-							.getDefaultParameterValue().value);
+							.getDefaultParameterValue().getValue());
 				}
 				sb.append(pdef.getName()).append("=").append(paramValue)
 						.append("\n");
@@ -363,16 +395,15 @@ public class PhaseJobsConfig implements Describable<PhaseJobsConfig> {
 
 	}
 
-	private static ParametersAction mergeParameters(ParametersAction base,
-			ParametersAction overlay) {
+	private static MultiJobParametersAction mergeParameters(MultiJobParametersAction base,
+			MultiJobParametersAction overlay) {
 		LinkedHashMap<String, ParameterValue> params = new LinkedHashMap<String, ParameterValue>();
 		for (ParameterValue param : base.getParameters())
 			if (param != null)
 				params.put(param.getName(), param);
 		for (ParameterValue param : overlay.getParameters())
 			params.put(param.getName(), param);
-		return new ParametersAction(params.values().toArray(
-				new ParameterValue[params.size()]));
+		return new MultiJobParametersAction(params.values().toArray(new ParameterValue[params.size()]));
 	}
 
 	/**
@@ -386,26 +417,30 @@ public class PhaseJobsConfig implements Describable<PhaseJobsConfig> {
 	 * @param build
 	 *            build that is triggering project
 	 * @param listener
+	 * 			  Project's listener
 	 * @param project
 	 *            Project that is being triggered
 	 * @param isCurrentInclude
 	 *            Include parameters from the current build.
 	 * @return
+	 * 			retuen List
 	 * @throws IOException
+	 * 			throws IOException
 	 * @throws InterruptedException
+	 * 			throws InterruptedException
 	 */
 	public List<Action> getActions(AbstractBuild build, TaskListener listener,
-			AbstractProject project, boolean isCurrentInclude)
+			Job project, boolean isCurrentInclude)
 			throws IOException, InterruptedException {
 		List<Action> actions = new ArrayList<Action>();
-		ParametersAction params = null;
+		MultiJobParametersAction params = null;
 		LinkedList<ParameterValue> paramsValuesList = new LinkedList<ParameterValue>();
 
-		List originalActions = project.getActions();
+		Map originalActions = project.getProperties();
 
 		// Check to see if the triggered project has Parameters defined.
 		ParametersDefinitionProperty parameters = null;
-		for (Object object : originalActions) {
+		for (Object object : originalActions.values()) {
 			if (object instanceof hudson.model.ParametersDefinitionProperty)
 				parameters = (ParametersDefinitionProperty) object;
 		}
@@ -419,7 +454,7 @@ public class PhaseJobsConfig implements Describable<PhaseJobsConfig> {
 					paramsValuesList.add(parameterdef
 							.getDefaultParameterValue());
 			}
-			params = new ParametersAction(
+			params = new MultiJobParametersAction(
 					paramsValuesList
 							.toArray(new ParameterValue[paramsValuesList.size()]));
 
@@ -428,13 +463,14 @@ public class PhaseJobsConfig implements Describable<PhaseJobsConfig> {
 		// Merge current parameters with the defaults from the triggered job.
 		// Current parameters override the defaluts.
 		if (isCurrentInclude) {
-			ParametersAction defaultParameters = build
-					.getAction(ParametersAction.class);
-
-			if (params != null && defaultParameters != null) {
-				params = mergeParameters(params, defaultParameters);
-			} else if (params == null) {
-				params = defaultParameters;
+			ParametersAction defaultParameters = build.getAction(ParametersAction.class);
+			if (defaultParameters != null) {
+				MultiJobParametersAction mjpa = new MultiJobParametersAction(defaultParameters.getParameters());
+				if (params != null) {
+					params = mergeParameters(params, mjpa);
+				} else {
+					params = mjpa;
+				}
 			}
 		}
 		// Backward compatibility
@@ -445,8 +481,12 @@ public class PhaseJobsConfig implements Describable<PhaseJobsConfig> {
 				try {
 					a = config.getAction(build, listener);
 					if (a instanceof ParametersAction) {
-						params = params == null ? (ParametersAction) a
-								: mergeParameters(params, (ParametersAction) a);
+						MultiJobParametersAction mjpa = new MultiJobParametersAction(((ParametersAction) a).getParameters());
+						if (params == null) {
+							params = mjpa;
+						} else {
+							params = mergeParameters(params, mjpa);
+						}
 					} else if (a != null) {
 						actions.add(a);
 					}

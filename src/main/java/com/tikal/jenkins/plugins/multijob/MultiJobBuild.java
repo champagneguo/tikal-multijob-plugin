@@ -15,7 +15,7 @@ import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 
-import hudson.model.AbstractBuild;
+import hudson.model.Run;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
 import hudson.model.Build;
@@ -27,6 +27,7 @@ import hudson.model.Run;
 import hudson.model.StringParameterValue;
 import hudson.scm.ChangeLogSet;
 import hudson.scm.ChangeLogSet.Entry;
+import javax.annotation.CheckForNull;
 import jenkins.model.Jenkins;
 
 @ExportedBean(defaultVisibility = 999)
@@ -35,6 +36,8 @@ public class MultiJobBuild extends Build<MultiJobProject, MultiJobBuild> {
     private List<SubBuild> subBuilds;
     private MultiJobChangeLogSet changeSets = new MultiJobChangeLogSet(this);
     private Map<String, SubBuild> subBuildsMap = new HashMap<String, SubBuild>();
+    private MultiJobTestResults multiJobTestResults;
+    
 
     public MultiJobBuild(MultiJobProject project) throws IOException {
         super(project);
@@ -81,7 +84,7 @@ public class MultiJobBuild extends Build<MultiJobProject, MultiJobBuild> {
     public String getBuildParams(SubBuild subBuild) {
         try {
             AbstractProject project = (AbstractProject) Jenkins.getInstance()
-            		.getItem(subBuild.getJobName(), this.getParent(), AbstractProject.class);;
+            		.getItem(subBuild.getJobName(), this.getParent(), AbstractProject.class);
             Run build = project.getBuildByNumber(subBuild.getBuildNumber());
             ParametersAction action = build.getAction(ParametersAction.class);
             List<ParameterValue> parameters = action.getParameters();
@@ -93,7 +96,7 @@ public class MultiJobBuild extends Build<MultiJobProject, MultiJobBuild> {
                 } catch (Exception e) {
                     continue;
                 }
-                String value = stringParameter.value;
+                String value = (String) stringParameter.getValue();
                 String name = stringParameter.getName();
                 buffer.append("<input type='text' size='15' value='")
                         .append(name)
@@ -128,6 +131,15 @@ public class MultiJobBuild extends Build<MultiJobProject, MultiJobBuild> {
             subBuilds = new CopyOnWriteArrayList<SubBuild>();
         return subBuilds;
     }
+    
+    public MultiJobTestResults getMultiJobTestResults() {
+        return multiJobTestResults;
+    }
+    
+    public void addTestsResult() {
+        multiJobTestResults = new MultiJobTestResults();
+        this.addAction(multiJobTestResults);
+    }
 
     protected class MultiJobRunnerImpl extends
             Build<MultiJobProject, MultiJobBuild>.BuildExecution {
@@ -136,6 +148,8 @@ public class MultiJobBuild extends Build<MultiJobProject, MultiJobBuild> {
             Result result = super.run(listener);
             if (isAborted()) {
                 result = Result.ABORTED;
+            } else if (isNotBuilt()) {
+                result = Result.NOT_BUILT;
             } else if (isFailure()) {
                 result = Result.FAILURE;
             } else if (isUnstable()) {
@@ -151,6 +165,10 @@ public class MultiJobBuild extends Build<MultiJobProject, MultiJobBuild> {
         }
 
         private boolean isAborted() {
+            return evaluateResult(Result.NOT_BUILT);
+        }
+
+        private boolean isNotBuilt() {
             return evaluateResult(Result.FAILURE);
         }
 
@@ -182,6 +200,7 @@ public class MultiJobBuild extends Build<MultiJobProject, MultiJobBuild> {
         private final String parentJobName;
         private final int parentBuildNumber;
         private final String jobName;
+        private final String jobAlias;
         private final int buildNumber;
         private final String phaseName;
         private final Result result;
@@ -190,15 +209,16 @@ public class MultiJobBuild extends Build<MultiJobProject, MultiJobBuild> {
         private final String url;
         private final boolean retry;
         private final boolean aborted;
-        private final AbstractBuild<?, ?> build;
+        private String buildID;
 
         public SubBuild(String parentJobName, int parentBuildNumber,
-                String jobName, int buildNumber, String phaseName,
-                Result result, String icon, String duration, String url, 
-                AbstractBuild<?, ?> build) {
+                String jobName, String jobAlias, int buildNumber, String phaseName,
+                Result result, String icon, String duration, String url,
+                Run<?, ?> build) {
             this.parentJobName = parentJobName;
             this.parentBuildNumber = parentBuildNumber;
             this.jobName = jobName;
+            this.jobAlias = jobAlias;
             this.buildNumber = buildNumber;
             this.phaseName = phaseName;
             this.result = result;
@@ -207,16 +227,17 @@ public class MultiJobBuild extends Build<MultiJobProject, MultiJobBuild> {
             this.url = url;
             this.retry = false;
             this.aborted = false;
-            this.build = build;
+            buildID = build.getExternalizableId();
         }
 
         public SubBuild(String parentJobName, int parentBuildNumber,
-                String jobName, int buildNumber, String phaseName,
+                String jobName, String jobAlias, int buildNumber, String phaseName,
                 Result result, String icon, String duration, String url,
-                boolean retry, boolean aborted, AbstractBuild<?, ?> build) {
+                boolean retry, boolean aborted, Run<?, ?> build) {
             this.parentJobName = parentJobName;
             this.parentBuildNumber = parentBuildNumber;
             this.jobName = jobName;
+            this.jobAlias = jobAlias;
             this.buildNumber = buildNumber;
             this.phaseName = phaseName;
             this.result = result;
@@ -225,7 +246,7 @@ public class MultiJobBuild extends Build<MultiJobProject, MultiJobBuild> {
             this.url = url;
             this.retry = retry;
             this.aborted = aborted;
-			this.build = build;
+            buildID = build.getExternalizableId();
         }
 
         @Exported
@@ -273,7 +294,16 @@ public class MultiJobBuild extends Build<MultiJobProject, MultiJobBuild> {
         public String getJobName() {
             return jobName;
         }
-        
+
+        @Exported
+        public String getJobAlias() {
+            if (jobAlias == null) {
+                return "";
+            }
+
+            return jobAlias;
+        }
+
         @Exported
         public int getBuildNumber() {
             return buildNumber;
@@ -288,12 +318,31 @@ public class MultiJobBuild extends Build<MultiJobProject, MultiJobBuild> {
         public String toString() {
             return "SubBuild [parentJobName=" + parentJobName
                     + ", parentBuildNumber=" + parentBuildNumber + ", jobName="
-                    + jobName + ", buildNumber=" + buildNumber + "]";
+                    + jobName + ", jobAlias=" + jobAlias
+                    + ", buildNumber=" + buildNumber + "]";
         }
 
 		@Exported
-		public AbstractBuild<?,?> getBuild() {
-			return build;
+        @CheckForNull
+		public Run<?,?> getBuild() {
+            if (buildID != null) {
+                Run<?, ?> build = Run.fromExternalizableId(buildID);
+                if (build instanceof Run) {
+                    return (Run) build;
+                }
+            } // else null if loaded from historical data prior to JENKINS-49328
+			return null;
 		}
+
+		@Exported
+		public boolean isMultiJobBuild() {
+            if (buildID != null) {
+                Run<?, ?> build = Run.fromExternalizableId(buildID);
+                if (build instanceof MultiJobBuild) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 }

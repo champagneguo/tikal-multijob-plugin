@@ -4,9 +4,10 @@ import hudson.model.BallColor;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
 import hudson.model.Result;
-import hudson.model.AbstractBuild;
+import hudson.model.Run;
 import hudson.model.Job;
 import jenkins.model.Jenkins;
+import org.apache.commons.lang.ObjectUtils;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -16,14 +17,12 @@ import java.util.List;
 @SuppressWarnings("rawtypes")
 public class PhaseWrapper extends AbstractWrapper {
 
-    final int nestLevel;
-
     final String phaseName;
 
     final boolean isConditional;
 
-    public PhaseWrapper(int nestLevel, String phaseName, boolean isConditional) {
-        this.nestLevel = nestLevel;
+    public PhaseWrapper(Job project, int nestLevel, String phaseName, boolean isConditional) {
+        super(project, nestLevel);
         this.phaseName = phaseName;
         this.isConditional = isConditional;
     }
@@ -49,51 +48,42 @@ public class PhaseWrapper extends AbstractWrapper {
         return phaseName;
     }
 
-    public int getNestLevel() {
-        return nestLevel;
-    }
-
     public boolean isConditional() {
         return isConditional;
     }
 
-    // public AbstractProject getProject() {
-    // return project;
-    // }
-
     public BallColor getIconColor() {
-        try {
-            Result result = null;
-            AbstractBuild worseBuild = null;
-            for (BuildState buildState : childrenBuildState) {
-                Job project = (Job) Jenkins.getInstance()
-                           .getItemByFullName(buildState.getJobName());
-                AbstractBuild build = (AbstractBuild) project
-                        .getBuildByNumber(buildState.getLastBuildNumber());
-                if (build != null) {
-                    if (result == null) {
-                        result = build.getResult();
-                        worseBuild = build;
-                    } else {
-                        if (build.getResult().isWorseThan(worseBuild.getResult())) {
-                            worseBuild = build;
-                        }
-                    }
+        Run worseBuild = null;
+        for (BuildState buildState : childrenBuildState) {
+            Job project = (Job) Jenkins.getInstance()
+                        .getItemByFullName(buildState.getJobName());
+            if (project == null)
+                continue;
+
+            Run build = (Run) project
+                    .getBuildByNumber(buildState.getLastBuildNumber());
+            if (build == null)
+                continue;
+
+            if (worseBuild == null) {
+                worseBuild = build;
+            } else {
+                if (build.getResult().isWorseThan(worseBuild.getResult())) {
+                    worseBuild = build;
                 }
             }
-            if (worseBuild != null) {
-                return worseBuild.getIconColor();
-            }
-        } catch (Exception e) {
-            return null;
         }
-        return null;
+        if (worseBuild != null) {
+            return worseBuild.getIconColor();
+        }
+
+        return BallColor.NOTBUILT;
     }
 
     public String getCss() {
         StringBuilder builder = new StringBuilder();
         builder.append("padding-left:");
-        builder.append(String.valueOf((getNestLevel() + 1) * 20));
+        builder.append(String.valueOf((nestLevel + 1) * 20));
         builder.append("px;");
         builder.append("font-style:italic;font-size:smaller;font-weight:bold;");
         return builder.toString();

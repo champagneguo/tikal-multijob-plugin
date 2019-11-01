@@ -1,12 +1,12 @@
 package com.tikal.jenkins.plugins.multijob;
 
-import hudson.model.AbstractProject;
+import hudson.model.Job;
 
 /**
  * The different statuses of the job which may or not triggered the build.
  * <p>These are used to compute the {@link MultiJobBuilder#JOB_IS_BUILDABLE} variable.
  * There is only one status available for each job, and the current check sequence is 
- * described at {@link MultiJobBuilder#getScmChange()}.</p>
+ * described at MultiJobBuilder.getScmChange().</p>
  *      
  */
 public enum StatusJob {
@@ -99,6 +99,15 @@ public enum StatusJob {
         public boolean isBuildable() {
             return true;
         }
+    },
+    /**
+     * The job doesn't contains workspace.
+     */
+    DOESNT_CONTAINS_WORKSPACE("[%s] subjob does not contain workspace.") {
+        @Override
+        public boolean isBuildable() {
+            return true;
+        }
     };
 
     /**
@@ -130,7 +139,7 @@ public enum StatusJob {
      * @param subjob the job associated to this status job.
      * @return a text with the formatted message.
      */
-    public String getMessage(AbstractProject subjob) {
+    public String getMessage(Job subjob) {
         return String.format(this.getMessage(), subjob.getName());
     }
 }

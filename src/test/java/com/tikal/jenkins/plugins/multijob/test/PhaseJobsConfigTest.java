@@ -23,6 +23,7 @@
  */
 package com.tikal.jenkins.plugins.multijob.test;
 
+import com.tikal.jenkins.plugins.multijob.MultiJobParametersAction;
 import hudson.model.Action;
 import hudson.model.ParameterValue;
 import hudson.model.TaskListener;
@@ -33,7 +34,6 @@ import hudson.model.CauseAction;
 import hudson.model.FreeStyleProject;
 import hudson.model.Hudson;
 import hudson.model.ParameterDefinition;
-import hudson.model.ParametersAction;
 import hudson.model.ParametersDefinitionProperty;
 import hudson.model.StringParameterDefinition;
 import hudson.model.StringParameterValue;
@@ -81,7 +81,7 @@ public class PhaseJobsConfigTest extends HudsonTestCase{
 		AbstractProject projectB = createTriggeredProject(null);
 		MultiJobBuild mjb =createTriggeringBuild(null);
 
-		PhaseJobsConfig pjc = new PhaseJobsConfig("dummy", "", true, null, KillPhaseOnJobResultCondition.NEVER, false, false, "", 0, false, false, "" , true, false);
+		PhaseJobsConfig pjc = new PhaseJobsConfig("dummy","dummyAlias", "", true, null, KillPhaseOnJobResultCondition.NEVER, false, false, "", 0, false, false, "" , true, false);
 
 		List<Action> actions = pjc.getActions(mjb, TaskListener.NULL, projectB, true);
 		// check single ParametersAction created
@@ -93,13 +93,13 @@ public class PhaseJobsConfigTest extends HudsonTestCase{
 		AbstractProject projectB = createTriggeredProject(DEFAULT_KEY_VALUES);
 		MultiJobBuild mjb = createTriggeringBuild(null);
 
-		PhaseJobsConfig pjc = new PhaseJobsConfig("dummy", "", true, null, KillPhaseOnJobResultCondition.NEVER, false, false, "", 0, false, false, "",false, false);
+		PhaseJobsConfig pjc = new PhaseJobsConfig("dummy","dummyAlias", "", true, null, KillPhaseOnJobResultCondition.NEVER, false, false, "", 0, false, false, "",false, false);
 		List<Action> actions = pjc.getActions(mjb, TaskListener.NULL, projectB, true);
 
 		// check single ParametersAction created
 		assertEquals(1, actions.size());
 
-		ParametersAction pa = getParametersAction(actions);
+		MultiJobParametersAction pa = getParametersAction(actions);
 		checkParameterMatch(DEFAULT_KEY_VALUES, pa);
 
 	}
@@ -113,13 +113,13 @@ public class PhaseJobsConfigTest extends HudsonTestCase{
 		AbstractProject projectB = createTriggeredProject(DEFAULT_KEY_VALUES);
 		MultiJobBuild mjb = createTriggeringBuild(createParametersAction(CURRENT_KEY_VALUES));
 
-		PhaseJobsConfig pjc = new PhaseJobsConfig("dummy", "", true, null, KillPhaseOnJobResultCondition.NEVER, false, false, "", 0, false, false, "" , false, false);
+		PhaseJobsConfig pjc = new PhaseJobsConfig("dummy", "dummyAlias","", true, null, KillPhaseOnJobResultCondition.NEVER, false, false, "", 0, false, false, "" , false, false);
 
 		List<Action> actions = pjc.getActions(mjb, TaskListener.NULL, projectB, true);
 
 		// check single ParametersAction created
 		assertEquals(1, actions.size());
-		ParametersAction pa = getParametersAction(actions);
+		MultiJobParametersAction pa = getParametersAction(actions);
 
 		HashMap<String,String> combinedlist = new HashMap<String,String>(DEFAULT_KEY_VALUES);
 		combinedlist.putAll(CURRENT_KEY_VALUES);
@@ -136,13 +136,13 @@ public class PhaseJobsConfigTest extends HudsonTestCase{
 		AbstractProject projectB = createTriggeredProject(DEFAULT_KEY_VALUES);
 		MultiJobBuild mjb = createTriggeringBuild(createParametersAction(OVERRIDES_KEY_VALUES));
 
-		PhaseJobsConfig pjc = new PhaseJobsConfig("dummy", "", true, null, KillPhaseOnJobResultCondition.NEVER, false, false, "", 0, false, false, "",false, false);
+		PhaseJobsConfig pjc = new PhaseJobsConfig("dummy", "dummyAlias", "", true, null, KillPhaseOnJobResultCondition.NEVER, false, false, "", 0, false, false, "",false, false);
 
 		List<Action> actions = pjc.getActions(mjb, TaskListener.NULL, projectB, true);
 
 		// check single ParametersAction created
 		assertEquals(1, actions.size());
-		ParametersAction pa = getParametersAction(actions);
+		MultiJobParametersAction pa = getParametersAction(actions);
 
 		HashMap<String,String> combinedlist = new HashMap<String,String>(DEFAULT_KEY_VALUES);
 		combinedlist.putAll(OVERRIDES_KEY_VALUES);
@@ -158,12 +158,12 @@ public class PhaseJobsConfigTest extends HudsonTestCase{
 		AbstractProject projectB = createTriggeredProject(DEFAULT_KEY_VALUES);
 		MultiJobBuild mjb = createTriggeringBuild(createParametersAction(OVERRIDES_KEY_VALUES));
 
-		PhaseJobsConfig pjc = new PhaseJobsConfig("dummy", "", true, null, KillPhaseOnJobResultCondition.NEVER, false, false, "", 0, false, false, "",false, false);
+		PhaseJobsConfig pjc = new PhaseJobsConfig("dummy", "dummyAlias", "", true, null, KillPhaseOnJobResultCondition.NEVER, false, false, "", 0, false, false, "",false, false);
 		List<Action> actions = pjc.getActions(mjb, TaskListener.NULL, projectB, false);
 
 		// check single ParametersAction created
 		assertEquals(1, actions.size());
-		ParametersAction pa = getParametersAction(actions);
+		MultiJobParametersAction pa = getParametersAction(actions);
 
 		checkParameterMatch(DEFAULT_KEY_VALUES, pa);
 	}
@@ -181,14 +181,14 @@ public class PhaseJobsConfigTest extends HudsonTestCase{
 		configs.add(new TestParametersConfig());
 		configs.add(new TestParametersConfig(OVERRIDES_KEY_VALUES));
 
-		PhaseJobsConfig pjc = new PhaseJobsConfig("dummy", "", true, configs, KillPhaseOnJobResultCondition.NEVER, false, false, "", 0, false, false, "",false, false);
+		PhaseJobsConfig pjc = new PhaseJobsConfig("dummy", "dummyAlias","", true, configs, KillPhaseOnJobResultCondition.NEVER, false, false, "", 0, false, false, "",false, false);
 
 
 		List<Action> actions = pjc.getActions(mjb, TaskListener.NULL, projectB, true);
 
 		// check 2 actions created
 		assertEquals(2, actions.size());
-		ParametersAction pa = getParametersAction(actions);
+		MultiJobParametersAction pa = getParametersAction(actions);
 
 		//check that expected parameter is listed
 		HashMap<String,String> combinedlist = new HashMap<String,String>(DEFAULT_KEY_VALUES);
@@ -210,13 +210,13 @@ public class PhaseJobsConfigTest extends HudsonTestCase{
 		configs.add(new TestParametersConfig());
 		configs.add(new TestParametersConfig(CONFIG_OVERRIDES_KEY_VALUES));
 
-		PhaseJobsConfig pjc = new PhaseJobsConfig("dummy", "", true, configs, KillPhaseOnJobResultCondition.NEVER, false, false, "", 0, false, false, "",false, false);
+		PhaseJobsConfig pjc = new PhaseJobsConfig("dummy", "dummyAlias", "", true, configs, KillPhaseOnJobResultCondition.NEVER, false, false, "", 0, false, false, "",false, false);
 
 		List<Action> actions = pjc.getActions(mjb, TaskListener.NULL, projectB, true);
 
 		// check 2 actions created
 		assertEquals(2, actions.size());
-		ParametersAction pa = getParametersAction(actions);
+		MultiJobParametersAction pa = getParametersAction(actions);
 
 		HashMap<String,String> combinedlist = new HashMap<String,String>(DEFAULT_KEY_VALUES);
 		combinedlist.putAll(OVERRIDES_KEY_VALUES);
@@ -239,21 +239,21 @@ public class PhaseJobsConfigTest extends HudsonTestCase{
 		configs.add(new TestParametersConfig());
 		configs.add(new TestParametersConfig(CONFIG_OVERRIDES_KEY_VALUES));
 
-		PhaseJobsConfig pjc = new PhaseJobsConfig("dummy", "", true, configs, KillPhaseOnJobResultCondition.NEVER, false, false, "", 0, false, false, "",false, false);
+		PhaseJobsConfig pjc = new PhaseJobsConfig("dummy", "dummyAlias", "", true, configs, KillPhaseOnJobResultCondition.NEVER, false, false, "", 0, false, false, "",false, false);
 
 
 		List<Action> actions = pjc.getActions(mjb, TaskListener.NULL, projectB, false);
 
 		// check 2 actions created
 		assertEquals(2, actions.size());
-		ParametersAction pa = getParametersAction(actions);
+		MultiJobParametersAction pa = getParametersAction(actions);
 		HashMap<String,String> combinedlist = new HashMap<String,String>(DEFAULT_KEY_VALUES);
 		combinedlist.putAll(CONFIG_OVERRIDES_KEY_VALUES);
 
 		checkParameterMatch(combinedlist, pa);
 	}
 
-	private MultiJobBuild createTriggeringBuild(ParametersAction parametersAction) throws Exception {
+	private MultiJobBuild createTriggeringBuild(MultiJobParametersAction parametersAction) throws Exception {
 				// set up the triggering build
 		MultiJobProject projectA = new MultiJobProject(Hudson.getInstance(), "ssss");
 		MultiJobBuild mjb = new MultiJobBuild(projectA);
@@ -280,17 +280,17 @@ public class PhaseJobsConfigTest extends HudsonTestCase{
 		return projectB;
 	}
 
-	private ParametersAction createParametersAction(Map<String,String> items) {
+	private MultiJobParametersAction createParametersAction(Map<String,String> items) {
 		List<ParameterValue> params = new ArrayList<ParameterValue>();
 		if(items != null) {
 			for(String name: items.keySet()) {
 				params.add(new StringParameterValue(name, items.get(name)));
 			}
 		}
-		return new ParametersAction(params);
+		return new MultiJobParametersAction(params);
 	}
 
-	private void checkParameterMatch(Map<String, String> combinedlist, ParametersAction pa) {
+	private void checkParameterMatch(Map<String, String> combinedlist, MultiJobParametersAction pa) {
 		assertTrue(pa != null);
 		assertEquals(combinedlist.size(), pa.getParameters().size());
 		for(String key : combinedlist.keySet()) {
@@ -298,11 +298,11 @@ public class PhaseJobsConfigTest extends HudsonTestCase{
 		}
 	}
 
-	private ParametersAction getParametersAction(List<Action> actions) {
-		ParametersAction pa =null;
+	private MultiJobParametersAction getParametersAction(List<Action> actions) {
+		MultiJobParametersAction pa =null;
 		for (Action a :actions) {
-			if(a instanceof ParametersAction) {
-				pa = (ParametersAction)a;
+			if(a instanceof MultiJobParametersAction) {
+				pa = (MultiJobParametersAction)a;
 			}
 		}
 		return pa;

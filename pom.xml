@@ -3,24 +3,17 @@
 	<parent>
 		<groupId>org.jenkins-ci.plugins</groupId>
 		<artifactId>plugin</artifactId>
-		<version>1.565.1</version>
+		<version>3.2</version>
+                <relativePath />
 	</parent>
 	<!-- parent> <groupId>org.jvnet.hudson.plugins</groupId> <artifactId>hudson-plugin-parent</artifactId> 
 		<version>2.1.0</version> <relativePath>../pom.xml</relativePath> </parent -->
 
 	<artifactId>jenkins-multijob-plugin</artifactId>
-	<version>1.22-SNAPSHOT</version>
+	<version>1.33-SNAPSHOT</version>
 	<name>Jenkins Multijob plugin</name>
 	<description>Enabling full hierarchy of Jenkins jobs</description>
 	<url>http://wiki.jenkins-ci.org/display/JENKINS/Multijob+Plugin</url>
-
-	<distributionManagement>
-		<repository>
-			<id>maven.jenkins-ci.org</id>
-			<url>http://maven.jenkins-ci.org/content/repositories/releases/</url>
-		</repository>
-	</distributionManagement>
-
 
 	<developers>
 		<developer>
@@ -38,29 +31,38 @@
 			<name>Itai Or</name>
 			<email>itai@tikalk.com</email>
 		</developer>
+		<developer>
+			<id>cohencil</id>
+			<name>Chen Cohen</name>
+			<email>chenc@tikalk.com</email>
+		</developer>
+		<developer>
+			<id>yorammi</id>
+			<name>Yoram Michaeli</name>
+			<email>yorammi@tikalk.com</email>
+		</developer>
 	</developers>
 
 	<scm>
 		<connection>scm:git:git://github.com:jenkinsci/tikal-multijob-plugin.git</connection>
 		<developerConnection>scm:git:git@github.com:jenkinsci/tikal-multijob-plugin.git</developerConnection>
 		<url>https://github.com/jenkinsci/tikal-multijob-plugin.git</url>
-		<tag>HEAD</tag>
+		<tag>jenkins-multijob-plugin-1.32</tag>
 	</scm>
 
 
 	<dependencies>
 		<dependency>
-			<groupId>org.jenkins-ci.main</groupId>
-			<artifactId>jenkins-war</artifactId>
-			<type>war</type>
-			<version>${project.parent.version}</version>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
 			<groupId>org.jenkins-ci.plugins</groupId>
 			<artifactId>parameterized-trigger</artifactId>
 			<version>2.25</version>
+		</dependency>
+                
+                
+		<dependency>
+			<groupId>org.jenkins-ci.plugins</groupId>
+			<artifactId>junit</artifactId>
+			<version>1.11</version>
 		</dependency>
 
 		<dependency>
@@ -82,9 +84,33 @@
 		</dependency>
 
 		<dependency>
+			<groupId>org.jenkins-ci.plugins</groupId>
+			<artifactId>mailer</artifactId>
+			<version>1.13</version>
+		</dependency>
+
+		<dependency>
 			<groupId>org.jenkins-ci.main</groupId>
 			<artifactId>maven-plugin</artifactId>
 			<version>2.6</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.apache.httpcomponents</groupId>
+					<artifactId>httpclient</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.apache.httpcomponents</groupId>
+					<artifactId>httpcore</artifactId>
+				</exclusion>
+                                <exclusion> <!-- TODO pending maven-plugin 3.0 -->
+                                    <groupId>org.apache.ant</groupId>
+                                    <artifactId>ant</artifactId>
+                                </exclusion>
+                                <exclusion> <!-- TODO pending maven-plugin 3.0 -->
+                                    <groupId>com.google.inject</groupId>
+                                    <artifactId>guice</artifactId>
+                                </exclusion>
+			</exclusions>
 		</dependency>
 
 		<dependency>
@@ -93,11 +119,37 @@
 			<version>1.31</version>
 			<optional>true</optional>
 		</dependency>
+
+		<dependency>
+			<groupId>org.jenkins-ci.plugins</groupId>
+			<artifactId>built-on-column</artifactId>
+			<version>1.1</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.jenkins-ci.plugins</groupId>
 			<artifactId>matrix-project</artifactId>
-			<version>1.4</version>
+			<version>1.7.1</version>
 			<optional>true</optional>
+		</dependency>
+		<!-- Workflow plugin imports are used to test compatibility -->
+		<dependency>
+			<groupId>org.jenkins-ci.plugins.workflow</groupId>
+			<artifactId>workflow-job</artifactId>
+			<version>${workflow.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.jenkins-ci.plugins.workflow</groupId>
+			<artifactId>workflow-cps</artifactId>
+			<version>${workflow.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.jenkins-ci.plugins.workflow</groupId>
+			<artifactId>workflow-basic-steps</artifactId>
+			<version>${workflow.version}</version>
+			<scope>test</scope>
 		</dependency>
 
 	</dependencies>
@@ -175,12 +227,12 @@
 				</plugin>
 				<plugin>
 					<artifactId>maven-release-plugin</artifactId>
-					<version>2.4.2</version>
+					<version>2.5.1</version>
 					<dependencies>
 						<dependency>
 							<groupId>org.apache.maven.scm</groupId>
 							<artifactId>maven-scm-provider-gitexe</artifactId>
-							<version>1.8.1</version>
+							<version>1.9.2</version>
 						</dependency>
 					</dependencies>
 				</plugin>
@@ -202,4 +254,12 @@
 		</pluginRepository>
 	</pluginRepositories>
 	<packaging>hpi</packaging>
+
+	<properties>
+		<findbugs.failOnError>false</findbugs.failOnError>
+				<workflow.version>1.4</workflow.version>
+                <jenkins.version>2.31</jenkins.version>
+                <java.level>7</java.level>
+	</properties>
+
 </project>
