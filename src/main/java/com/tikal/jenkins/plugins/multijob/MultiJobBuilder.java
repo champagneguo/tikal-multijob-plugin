@@ -841,7 +841,7 @@ public class MultiJobBuilder extends Builder implements DependecyDeclarer {
         String buildNumber = Integer.toString(jobBuild.getNumber());
         String buildResult = jobBuild.getResult().toString();
         String buildName = jobBuild.getDisplayName().toString();
-
+        String nodeName = jobBuild.getBuiltOn().getNodeName();
         // If the job is run a second time, store the first job's number and result with unique keys
         if (variables.get("TRIGGERED_BUILD_RUN_COUNT_" + jobNameSafe) != null) {
             String runCount = variables.get("TRIGGERED_BUILD_RUN_COUNT_" + jobNameSafe);
@@ -858,6 +858,7 @@ public class MultiJobBuilder extends Builder implements DependecyDeclarer {
         variables.put(jobNameSafe + "_BUILD_NUMBER", buildNumber);
         variables.put(jobNameSafe + "_BUILD_RESULT", buildResult);
         variables.put(jobNameSafe + "_BUILD_NAME", buildName);
+	variables.put(jobNameSafe + "_NODE_NAME", nodeName);
 
         if (variables.get("TRIGGERED_JOB_NAMES") == null) {
             variables.put("TRIGGERED_JOB_NAMES", jobName);
